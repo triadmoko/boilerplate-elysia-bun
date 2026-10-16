@@ -1,5 +1,4 @@
 // Implementasi in-memory untuk unit/integration test — tidak butuh MySQL.
-import { createLogger } from '@/pkg/logger'
 import { assembleContainer, type Container } from '@/app/container'
 import type { User, UserRole } from '@/shared/domain/entity/user.entity'
 import { UnauthorizedError } from '@/shared/domain/errors/app-error'
@@ -10,6 +9,7 @@ import type {
   UpdateUserData,
   UserRepository,
 } from '@/shared/domain/repository/user.repository'
+import type { Logger } from '@/shared/domain/service/logger'
 import type { PasswordHasher } from '@/shared/domain/service/password-hasher'
 import type { TokenPayload, TokenService } from '@/shared/domain/service/token-service'
 
@@ -76,9 +76,16 @@ export class FakeTokenService implements TokenService {
   }
 }
 
+export class NoopLogger implements Logger {
+  debug() {}
+  info() {}
+  warn() {}
+  error() {}
+}
+
 export const createTestContainer = (): Container & { repositories: { user: InMemoryUserRepository } } => {
   const userRepository = new InMemoryUserRepository()
-  const container = assembleContainer(createLogger('error'), {
+  const container = assembleContainer(new NoopLogger(), {
     repositories: { user: userRepository },
     services: { passwordHasher: new FakePasswordHasher(), tokenService: new FakeTokenService() },
   })

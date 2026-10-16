@@ -1,6 +1,7 @@
 import { toPublicUser, type PublicUser } from '@/shared/domain/entity/user.entity'
 import { ConflictError, NotFoundError, UnauthorizedError } from '@/shared/domain/errors/app-error'
 import type { UserRepository } from '@/shared/domain/repository/user.repository'
+import type { Logger } from '@/shared/domain/service/logger'
 import type { PasswordHasher } from '@/shared/domain/service/password-hasher'
 import type { TokenService } from '@/shared/domain/service/token-service'
 
@@ -32,11 +33,13 @@ export class AuthUsecaseImpl implements AuthUsecase {
     private readonly userRepository: UserRepository,
     private readonly passwordHasher: PasswordHasher,
     private readonly tokenService: TokenService,
+    private readonly logger: Logger,
   ) {}
 
   async register({ name, email, password }: RegisterInput): Promise<PublicUser> {
     const normalizedEmail = email.trim().toLowerCase()
     if (await this.userRepository.findByEmail(normalizedEmail)) {
+      this.logger.warn('userRepository.findByEmail: email already registered', { email: normalizedEmail })
       throw new ConflictError('Email is already registered')
     }
 
@@ -50,9 +53,15 @@ export class AuthUsecaseImpl implements AuthUsecase {
   }
 
   async login({ email, password }: LoginInput): Promise<AuthResult> {
-    const user = await this.userRepository.findByEmail(email.trim().toLowerCase())
-    // Pesan disamakan agar tidak membocorkan email mana yang terdaftar.
-    if (!user || !(await this.passwordHasher.verify(password, user.password))) {
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await this.userRepository.findByEmail(normalizedEmail)
+    // Pesan ke client disamakan agar tidak membocorkan email mana yang terdaftar; detailnya hanya di log.
+    if (!user) {
+      this.logger.warn('userRepository.findByEmail: user not found', { email: normalizedEmail })
+      throw new UnauthorizedError('Invalid email or password')
+    }
+    if (!(await this.passwordHasher.verify(password, user.password))) {
+      this.logger.warn('passwordHasher.verify: password mismatch', { userId: user.id })
       throw new UnauthorizedError('Invalid email or password')
     }
 
@@ -62,7 +71,10 @@ export class AuthUsecaseImpl implements AuthUsecase {
 
   async me(userId: number): Promise<PublicUser> {
     const user = await this.userRepository.findById(userId)
-    if (!user) throw new NotFoundError('User not found')
+    if (!user) {
+      this.logger.warn('userRepository.findById: user not found', { userId })
+      throw new NotFoundError('User not found')
+    }
     return toPublicUser(user)
   }
 }

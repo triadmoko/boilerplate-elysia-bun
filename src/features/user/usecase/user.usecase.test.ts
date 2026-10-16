@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { ConflictError, NotFoundError } from '@/shared/domain/errors/app-error'
-import { FakePasswordHasher, InMemoryUserRepository } from '@/shared/testing/fakes'
+import { FakePasswordHasher, InMemoryUserRepository, NoopLogger } from '@/shared/testing/fakes'
 import { UserUsecaseImpl } from './user.usecase'
 
 describe('UserUsecase', () => {
@@ -9,7 +9,7 @@ describe('UserUsecase', () => {
 
   beforeEach(() => {
     repository = new InMemoryUserRepository()
-    usecase = new UserUsecaseImpl(repository, new FakePasswordHasher())
+    usecase = new UserUsecaseImpl(repository, new FakePasswordHasher(), new NoopLogger())
   })
 
   const seed = (count: number) =>

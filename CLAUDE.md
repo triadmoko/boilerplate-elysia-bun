@@ -35,7 +35,7 @@ src/main.ts
                            ↑ implemented by shared/infrastructure (Drizzle) and pkg/ (jwt, bcrypt)
 ```
 
-**Key rule**: `usecase` and `shared/domain` must never import Elysia, Drizzle, `jose` or anything from `infrastructure`/`delivery`. Use cases receive interfaces (`UserRepository`, `PasswordHasher`, `TokenService`) via constructor.
+**Key rule**: `usecase` and `shared/domain` must never import Elysia, Drizzle, `jose` or anything from `infrastructure`/`delivery`. Use cases receive interfaces (`UserRepository`, `PasswordHasher`, `TokenService`, `Logger`) via constructor.
 
 ### Feature Module Pattern
 
@@ -65,11 +65,11 @@ See `src/features/user/` for the reference CRUD implementation.
 - `shared/delivery/http/response` — always return `ok(data, message?)` or `paginated(items, meta)` from handlers.
 - `shared/delivery/http/middleware/auth.middleware.ts` — Elysia macros: `auth: true` (valid Bearer JWT, injects `user: TokenPayload`) and `roles: ['admin']` (auth + role check). Both add `bearerAuth` security to OpenAPI. Handlers must `.use(auth)` (the instance from `container.middlewares.auth`) to get the macros.
 - `pkg/pagination.ts` — `resolvePagination` (clamps page/limit, max 100) and `buildPaginationMeta`.
-- `pkg/logger` — JSON line logger; level from `LOG_LEVEL`.
+- `pkg/logger` — JSON line logger implementing the `Logger` port (`shared/domain/service/logger.ts`); level from `LOG_LEVEL`. Use cases log every failure point before throwing, e.g. `this.logger.warn('userRepository.findById: user not found', { userId })` (`warn` for business errors; unexpected errors are logged with stack by `error.handler.ts`). Never log passwords or tokens.
 
 ### Testing
 
-- Use cases are tested with fakes from `src/shared/testing/fakes.ts` (`InMemoryUserRepository`, `FakePasswordHasher`, `FakeTokenService`).
+- Use cases are tested with fakes from `src/shared/testing/fakes.ts` (`InMemoryUserRepository`, `FakePasswordHasher`, `FakeTokenService`, `NoopLogger`).
 - `src/app/app.test.ts` exercises the full HTTP stack via `app.handle(new Request(...))` using `createTestContainer()` — no MySQL required.
 - Always `await expect(promise).rejects...`.
 

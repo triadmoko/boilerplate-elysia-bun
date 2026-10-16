@@ -1,10 +1,12 @@
-export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+import type { LogMeta, Logger } from '@/shared/domain/service/logger'
 
-type LogMeta = Record<string, unknown>
+export type { Logger }
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 const PRIORITY: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 }
 
-export const createLogger = (minLevel: LogLevel = 'info') => {
+export const createLogger = (minLevel: LogLevel = 'info'): Logger => {
   const log = (level: LogLevel, message: string, meta?: LogMeta) => {
     if (PRIORITY[level] < PRIORITY[minLevel]) return
     const line = JSON.stringify({ time: new Date().toISOString(), level, message, ...meta })
@@ -19,5 +21,3 @@ export const createLogger = (minLevel: LogLevel = 'info') => {
     error: (message: string, meta?: LogMeta) => log('error', message, meta),
   }
 }
-
-export type Logger = ReturnType<typeof createLogger>

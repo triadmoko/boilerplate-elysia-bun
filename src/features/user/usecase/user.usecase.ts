@@ -2,6 +2,7 @@ import { buildPaginationMeta, resolvePagination, type PaginationMeta, type Pagin
 import { toPublicUser, type PublicUser, type UserRole } from '@/shared/domain/entity/user.entity'
 import { ConflictError, NotFoundError } from '@/shared/domain/errors/app-error'
 import type { UpdateUserData, UserRepository } from '@/shared/domain/repository/user.repository'
+import type { Logger } from '@/shared/domain/service/logger'
 import type { PasswordHasher } from '@/shared/domain/service/password-hasher'
 
 export interface ListUsersInput extends PaginationQuery {
@@ -34,6 +35,7 @@ export class UserUsecaseImpl implements UserUsecase {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly passwordHasher: PasswordHasher,
+    private readonly logger: Logger,
   ) {}
 
   async list({ search, ...query }: ListUsersInput): Promise<ListUsersResult> {
@@ -48,7 +50,10 @@ export class UserUsecaseImpl implements UserUsecase {
 
   async getById(id: number): Promise<PublicUser> {
     const user = await this.userRepository.findById(id)
-    if (!user) throw new NotFoundError('User not found')
+    if (!user) {
+      this.logger.warn('userRepository.findById: user not found', { userId: id })
+      throw new NotFoundError('User not found')
+    }
     return toPublicUser(user)
   }
 
@@ -67,7 +72,10 @@ export class UserUsecaseImpl implements UserUsecase {
 
   async update(id: number, { name, email, password, role }: UpdateUserInput): Promise<PublicUser> {
     const existing = await this.userRepository.findById(id)
-    if (!existing) throw new NotFoundError('User not found')
+    if (!existing) {
+      this.logger.warn('userRepository.findById: user not found', { userId: id })
+      throw new NotFoundError('User not found')
+    }
 
     const data: UpdateUserData = { role }
     if (name !== undefined) data.name = name.trim()
@@ -78,17 +86,24 @@ export class UserUsecaseImpl implements UserUsecase {
     if (password !== undefined) data.password = await this.passwordHasher.hash(password)
 
     const updated = await this.userRepository.update(id, data)
-    if (!updated) throw new NotFoundError('User not found')
+    if (!updated) {
+      this.logger.warn('userRepository.update: user not found', { userId: id })
+      throw new NotFoundError('User not found')
+    }
     return toPublicUser(updated)
   }
 
   async delete(id: number): Promise<void> {
     const deleted = await this.userRepository.delete(id)
-    if (!deleted) throw new NotFoundError('User not found')
+    if (!deleted) {
+      this.logger.warn('userRepository.delete: user not found', { userId: id })
+      throw new NotFoundError('User not found')
+    }
   }
 
   private async ensureEmailAvailable(email: string) {
     if (await this.userRepository.findByEmail(email)) {
+      this.logger.warn('userRepository.findByEmail: email already registered', { email })
       throw new ConflictError('Email is already registered')
     }
   }

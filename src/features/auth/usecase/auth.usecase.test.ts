@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'bun:test'
 import { ConflictError, NotFoundError, UnauthorizedError } from '@/shared/domain/errors/app-error'
-import { FakePasswordHasher, FakeTokenService, InMemoryUserRepository } from '@/shared/testing/fakes'
+import { FakePasswordHasher, FakeTokenService, InMemoryUserRepository, NoopLogger } from '@/shared/testing/fakes'
 import { AuthUsecaseImpl } from './auth.usecase'
 
 describe('AuthUsecase', () => {
@@ -9,7 +9,7 @@ describe('AuthUsecase', () => {
 
   beforeEach(() => {
     repository = new InMemoryUserRepository()
-    usecase = new AuthUsecaseImpl(repository, new FakePasswordHasher(), new FakeTokenService())
+    usecase = new AuthUsecaseImpl(repository, new FakePasswordHasher(), new FakeTokenService(), new NoopLogger())
   })
 
   describe('register', () => {
